@@ -41,7 +41,6 @@ no decimal places.
 'total_2008', 'total_2009', 'total_2010', and so on. Change data in these columns to 'general' data type with no decimal 
 places. 
 
-~~~
 
 9- Now look for in the repository for 1FigrFunctions.py and open this code in your editor of choice. Once open, at the top of the 
 script in line 19, find the "your_institution" variable and change it to your institution's preferred name. This variable is 

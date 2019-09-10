@@ -44,4 +44,6 @@ places.
 code. Otherwise you'll have to change the file paths at the beginning of each function to read to the new working directory. 
 
 
-Now that you've formatted the data correctly, you should be able to "plug and play" all existing functions.
+Now that you've formatted the data correctly, you should be able to "plug and play" all existing functions. Documentation of 
+function will be improving with time. The function names are an attempt to be descriptive. But if you are unclear, hopefully 
+running a function will make it more clear. 

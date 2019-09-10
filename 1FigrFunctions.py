@@ -15,6 +15,8 @@ from operator import itemgetter
 import numpy as np
 
 
+#########################################################
+#VRL presentation functions
 
 def number_of_papers_published_per_year():
     """Plots # of papers published by all big 5 providers per year"""
@@ -788,4 +790,734 @@ def total_references_per_year():
 
 #    plt.show()    
     plt.savefig('test.jpg', bbox_inches='tight')      #saves image in working directory
+
+###################################################################################
+#JR1 functions. Chart sizing and labeling needs to be dynamic
+
+def jr1_by_field_by_provider(provider_name):
+    """Charts JR1 downloads by field for chosen provider. User inputs provider name and dynamically generates chart for that provider"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+ 
+    for i in fields_data:
+        fields.append(i[0])
+    
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer
+    
+    sums_by_field = subset_by_provider.groupby(['Field'])['Downloads JR1 2017'].sum()     #sum of downloads per field
+    
+    sums_by_field = list(reversed(sums_by_field))
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'JR1 Downloads by field for Provider: {provider_name}')
+    plt.barh(fields, sums_by_field, height=.8, color='green')
+    
+    plt.grid()
+    plt.show()
+
+
+def jr1_percent_field_by_provider(provider_name):
+    """Charts % of JR1 downloads by field for a given provider"""
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+ 
+    for i in fields_data:
+        fields.append(i[0])
+       
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer        
+
+    sums_by_field = subset_by_provider.groupby(['Field'])['Downloads JR1 2017'].sum().tolist()     #sum of downloads per field
+
+    sums_by_field = list(reversed(sums_by_field))  
+    
+    total_downloads = sum(sums_by_field)
+        
+    percent_by_field = [round((i/total_downloads), 4) for i in sums_by_field]
+   
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Percent of total JR1 downloads by field for: {provider_name}')
+    plt.barh(fields, percent_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+    
+
+def jr1_jr80_value():
+    """Produces 'JR80' value by provider for JR1 downloads and charts each provider and its corresponding JR80 value.
+    JR80 is defined as: "Journals representing 80% of downloads for their respective provider"
+    Here is how JR80 score is calculated:
+        - Reads data for each provider individually
+        - Finds total number of JR1 downloads
+        - Sorts individual jornals by provider in order of number of downloads
+        - Counts jr1 download values until count surpasses 80% of total jr1 downloads
+        - Calculates JR80 score as number of journals required to reach 80% / total journals by provider
+        - Charts JR80 score of all providers, with Big 5 in red"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+
+    providers = data.groupby(['Provider'], as_index=False).sum().values.tolist()
+    
+    providers = [i[0] for i in providers]
+        
+    fluff_by_provider = []
+    
+    for provider_name in providers:
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+      
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        for i in journals_data:
+            if i[0] == provider_name:
+                journals_data.remove(i)                 #removing aggregator column data
+        
+        total_jr1_downloads = 0
+        total_journals = 0                         
+        for i in journals_data:
+            total_jr1_downloads += i[2]
+            total_journals += 1
+
+        jr1_tuples = [(i[0], i[2]) for i in journals_data]
+        jr1_tuples_sorted = sorted(jr1_tuples, key = lambda i: i[1], reverse=True)       #sorts on second element of jr1_tuples
+
+        running_tally = 0
+        highly_used_journals = []           #THIS HOLDS (JOURNAL NAME, JR5_DOWNLOADS)
+        for i in jr1_tuples_sorted:
+            if running_tally < (total_jr1_downloads * 0.8):
+                highly_used_journals.append(i)
+                running_tally += i[1]
+    
+        fluff_score = (len(highly_used_journals))/(total_journals)
+#        print(f"{provider_name} : {len(highly_used_journals)} of {total_journals} are JR80 journals")    #used to print each provider with number of journals included
+            
+        fluff_by_provider.append((provider_name, fluff_score))
+        
+    fluff_by_provider = sorted(fluff_by_provider, key=itemgetter(1), reverse=True)    #sorting by fluff_index score
+    
+    providers = [x[0] for x in fluff_by_provider]
+    fluff_score = [x[1] for x in fluff_by_provider]
+    
+    
+    #plot results
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'JR80 Score by provider (JR1 downloads)')
+    plot = plt.barh(providers, fluff_score, height=.8, color='green')
+    
+    plot[13].set_color('red')
+    plot[22].set_color('red')
+    plot[23].set_color('red')
+    plot[26].set_color('red')
+    plot[31].set_color('red')
+
+    
+    #make custom plot legend
+    big5 = mpatches.Patch(color='red', label='Big 5 Provider')
+    
+    plt.grid()
+    plt.legend(handles=[big5])
+    plt.show() 
+
+
+def jr1_not_jr80_value():
+    """Produces 'Not-JR80' value by provider for JR1 downloads and charts each provider and its corresponding Not-JR80 value.
+    This is the inverse of the JR80 value.
+    JR80 is defined as: "Journals representing 80% of downloads for their respective provider"
+    Not-JR80 score is basically the rest of the journals that do not represent 80% of the use. 
+    Here is how Not-JR80 score is calculated:
+        - Reads data for each provider individually
+        - Finds total number of JR1 downloads
+        - Sorts individual jornals by provider in order of number of downloads
+        - Counts jr1 download values until count surpasses 80% of total jr1 downloads
+        - Calculates JR80 score as number of journals required to reach 80% / total journals by provider
+        - Then takes 1 - this number to get the not_jr80 score. 
+        - Charts not-JR80 score of all providers, with Big 5 in red"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+
+    providers = data.groupby(['Provider'], as_index=False).sum().values.tolist()
+    
+    providers = [i[0] for i in providers]
+        
+    fluff_by_provider = []
+    
+    for provider_name in providers:
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+      
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        for i in journals_data:
+            if i[0] == provider_name:
+                journals_data.remove(i)                 #removing aggregator column data
+        
+        total_jr1_downloads = 0
+        total_journals = 0                         
+        for i in journals_data:
+            total_jr1_downloads += i[2]
+            total_journals += 1
+
+        jr1_tuples = [(i[0], i[2]) for i in journals_data]
+        jr1_tuples_sorted = sorted(jr1_tuples, key = lambda i: i[1], reverse=True)       #sorts on second element of jr1_tuples
+
+        running_tally = 0
+        highly_used_journals = []           #THIS HOLDS (JOURNAL NAME, JR5_DOWNLOADS)
+        for i in jr1_tuples_sorted:
+            if running_tally < (total_jr1_downloads * 0.8):
+                highly_used_journals.append(i)
+                running_tally += i[1]
+    
+        fluff_score = 1 - ((len(highly_used_journals))/(total_journals))
+            
+        fluff_by_provider.append((provider_name, fluff_score))
+        
+    fluff_by_provider = sorted(fluff_by_provider, key=itemgetter(1), reverse=True)    #sorting by fluff_index score
+    
+    providers = [x[0] for x in fluff_by_provider]
+    fluff_score = [x[1] for x in fluff_by_provider]
+    
+    #plot results
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Not-JR80 Score by provider (JR1 downloads)')
+    plot = plt.barh(providers, fluff_score, height=.8, color='green')
+    
+    plot[3].set_color('red')
+    plot[8].set_color('red')
+    plot[11].set_color('red')
+    plot[12].set_color('red')
+    plot[21].set_color('red')
+
+    
+    #make custom plot legend
+    big5 = mpatches.Patch(color='red', label='Big 5 Provider')
+    
+    plt.grid()
+    plt.legend(handles=[big5])
+    plt.show() 
+
+
+def jr1_jr80_big5_downloads():
+    """Produces 'JR80' value by provider for JR1 downloads and charts each provider and its corresponding JR80 value.
+    Only for Big 5 providers.
+    JR80 is defined as: "Journals representing 80% of downloads for their respective provider"
+    Here is how JR80 score is calculated:
+        - Reads data for each provider individually
+        - Finds total number of JR1 downloads
+        - Sorts individual jornals by provider in order of number of downloads
+        - Counts jr1 download values until count surpasses 80% of total jr1 downloads
+        - Calculates JR80 score as number of journals required to reach 80% / total journals by provider
+        - Charts JR80 score of all providers, with Big 5 in red"""
+
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']
+    
+    fluff_by_provider = []
+    
+    for provider_name in big5:
+        
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+        
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        for i in journals_data:
+            if i[0] == provider_name:
+                journals_data.remove(i)                 #removing aggregator column data                
+        
+        total_jr1_downloads = 0
+        total_journals = 0                         
+        for i in journals_data:
+            total_jr1_downloads += i[2]
+            total_journals += 1
+
+        jr1_tuples = [(i[0], i[2]) for i in journals_data]
+        jr1_tuples_sorted = sorted(jr1_tuples, key = lambda i: i[1], reverse=True)       #sorts on second element of jr1_tuples
+
+        running_tally = 0
+        highly_used_journals = []           #THIS HOLDS (JOURNAL NAME, JR5_DOWNLOADS)
+        for i in jr1_tuples_sorted:
+            if running_tally < (total_jr1_downloads * 0.8):
+                highly_used_journals.append(i)
+                running_tally += i[1]
+    
+        fluff_score = (len(highly_used_journals))/(total_journals)
+        print(f"{provider_name} : {len(highly_used_journals)} of {total_journals} are JR80 journals")    #used to print each provider with number of journals included
+            
+        fluff_by_provider.append((provider_name, fluff_score))
+       
+    fluff_by_provider = sorted(fluff_by_provider, key=itemgetter(1), reverse=True)    #sorting by fluff_index score
+    
+    providers = [x[0] for x in fluff_by_provider]
+    fluff_score = [x[1] for x in fluff_by_provider]
+    
+    #plot results
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Percentage of Titles Which Make 80% of JR1 Downloads \n (JR80 Score by Provider)')
+    plot = plt.barh(providers, fluff_score, height=.8, color='green')
+    
+    for i in plot:
+        score = i.get_width()
+        score = round(score, 4)
+        
+        plt.text(i.get_width() - .02, 
+                 i.get_y() + .35,
+                 '{:.2%}'.format(score),   #formats score as percentage
+                 ha='center',
+                 va='center')
+
+
+def jr1_jr80_big5_citations():
+    """Gets number of citations for each of the big 5 providers.
+    Citations are measured as publications that have cited a UVA-authored article"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']    
+
+    references_by_provider = []
+    
+    for provider_name in big5:
+        
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        for i in journals_data:
+            if i[0] == provider_name:
+                total_references = i[4]
+                references_by_provider.append(total_references)
+                
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Citations by Provider \n (# of UVA Authored Papers Cited)')
+    plot = plt.barh(big5, references_by_provider, height=.8, color='green')
+    
+    for i in plot:
+        score = i.get_width()
+        
+        plt.text(i.get_width() - 5500,          #sets x axis position of labels
+                 i.get_y() + .35,
+                 score,
+                 ha='center',
+                 va='center')
+
+
+def jr1_jr80_big5_publications():
+    """Gets number of papers/publications for each of big 5 providers.
+    Publications are measured as papers with at least one UVA author"""
+    
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']    
+#    big5 = ['AIP', 'American Chemical Society']
+    publications_by_provider = []
+    
+    for provider_name in big5:
+        
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        for i in journals_data:
+            if i[0] == provider_name:
+                total_publications = i[5]
+                publications_by_provider.append(total_publications)
+                
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Publications by Provider \n (# of UVA Authored Papers Published)')
+    plot = plt.barh(big5, publications_by_provider, height=.8, color='green')
+    
+    for i in plot:
+        score = i.get_width()
+        
+        plt.text(i.get_width() - 275,           #sets x axis position of labels
+                 i.get_y() + .35,
+                 score,
+                 ha='center',
+                 va='center')
+
+
+def jr1_big5_by_field(field_choice):
+    """Looks at jr1 downloads by field for the big 5 providers. Charts % use by field for each of the big 5 providers"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']
+
+    big5_data = []
+    for provider_name in big5:
+        provider_subset = data.loc[data['Provider'] == provider_name]
+        
+        provider_list = provider_subset.groupby(['Provider', 'Field'], as_index=False).sum().values.tolist()
+        for i in provider_list:
+            if i[1] == field_choice:
+                big5_data.append((i[0], i[1], i[3]))
+            
+
+    big5_packages = [x[0] for x in big5_data]
+    big5_total_by_field = [x[2] for x in big5_data]
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Big 5 Providers, JR1 downloads by field: {field_choice}')
+    plt.barh(big5_packages, big5_total_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+
+
+def jr1_downloads_by_discipline(provider_name):
+    """Shows distribution of JR1 downloads by discipline for the specified provider.
+    'Disciplines' is a column we derived from the pre-existing 'fields' column in the 1figr data.
+    Disciplines has mapped those field categories into more UVA specific language"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+
+    disciplines_data = subset_by_provider.groupby(['Discipline'], as_index=False).sum().values.tolist()
+
+    disciplines = []
+    jr1_totals = []
+    
+    for i in disciplines_data:
+        discipline_name = i[0]
+        disciplines.append(discipline_name)
+        discipline_jr1_downloads = i[2]
+        jr1_totals.append(int(discipline_jr1_downloads))      #int() to remove decimal points
+
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Distribution of JR1 downloads by Discipline for Provider: {provider_name} \n (Disciplines are specific to UVA)')
+    plot = plt.barh(disciplines, jr1_totals, height=.8, color='green')    
+        
+    for i in plot:
+        score = i.get_width()
+        
+        plt.text(i.get_width() + 20500,           #sets x axis position of labels
+                 i.get_y() + .35,
+                 score,
+                 ha='center',
+                 va='center') 
+        
+        
+#########################################################        
+#JR5 functions
+
+def jr5_by_field_by_provider(provider_name):
+    """Charts JR5 downloads by field for chosen provider. User inputs provider name and dynamically generates chart for that provider"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+#    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+ 
+    for i in fields_data:
+        fields.append(i[0])
+    
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer
+    
+    sums_by_field = subset_by_provider.groupby(['Field'])['Downloads JR5 2017 in 2017'].sum()     #sum of downloads per field
+    
+    sums_by_field = list(reversed(sums_by_field))
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'JR5 Downloads by field for Provider: {provider_name}')
+    plt.barh(fields, sums_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+    
+    
+def jr5_percent_field_by_provider(provider_name):
+    """Charts % of JR5 downloads by field for a given provider. This is in lieu of a stacked bar graph"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+ 
+    for i in fields_data:
+        fields.append(i[0])
+
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer
+
+    sums_by_field = subset_by_provider.groupby(['Field'])['Downloads JR5 2017 in 2017'].sum().tolist()     #sum of downloads per field
+    
+    sums_by_field = list(reversed(sums_by_field))
+    
+    total_downloads = sum(sums_by_field)
+        
+    percent_by_field = [round((i/total_downloads), 4) for i in sums_by_field]
+
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Percent of total JR5 downloads by field for: {provider_name}')
+    plt.barh(fields, percent_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show()     
+    
+    
+def jr5_big5_by_field(field_choice):
+    """Looks at jr5 downloads by field for the big 5 providers. Charts % use by field for each of the big 5 providers"""
+
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']
+    big5_data = []
+    for provider_name in big5:
+        provider_subset = data.loc[data['Provider'] == provider_name]
+        
+        provider_list = provider_subset.groupby(['Provider', 'Field'], as_index=False).sum().values.tolist()
+        for i in provider_list:
+            if i[1] == field_choice:
+                big5_data.append((i[0], i[1], i[4]))
+
+    big5_packages = [x[0] for x in big5_data]
+    big5_total_by_field = [x[2] for x in big5_data]
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Big 5 Providers, JR5 downloads by field: {field_choice}')
+    plt.barh(big5_packages, big5_total_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show()
+
+###########################################################
+#other functions. Chart sizing and labeling needs to be dynamic
+
+def journals_by_domain():
+    """Counting occurrences of downloads in each domain from JournalsPerPackage.csv"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    domains_list = data.Domain.tolist()
+
+    counted_domains = pd.Series(domains_list).value_counts().reset_index().values.tolist()
+    
+    domains = [x[0] for x in counted_domains]
+    counts = [x[1] for x in counted_domains]
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle('Journals by Domain')
+    plt.barh(domains, counts, height=.8, color='green')
+    plt.grid()
+    plt.show()
+    
+    
+def journals_by_field():
+    """Counting occurrences of downloads in each field from JournalsPerPackage.csv"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    fields_list = data.Field.tolist()
+
+    counted_fields = pd.Series(fields_list).value_counts().reset_index().values.tolist()
+    
+    fields = [x[0] for x in counted_fields]
+    counts = [x[1] for x in counted_fields]
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle('Journals by field')
+    plt.barh(fields, counts, height=.8, color='green')
+    plt.grid()
+    plt.show()
+
+
+def journals_by_field_big5():
+    """Counting occurences of downloads in each field from Journals Per Package.csv
+    from the big5 publishers. Big 5 are: Elsevier, Wiley, Springer, Sage, Taylor & Francis"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    providers_list = data.Provider.tolist()
+    fields_list = data.Field.tolist()
+    
+    zipped = list(zip(providers_list, fields_list))
+    
+    big5 = ['Elsevier', 'Wiley', 'Springer', 'Taylor & Francis', 'Sage']
+    big5_data = []
+    
+    for i in zipped:
+        if i[0] in big5:
+            big5_data.append(i)
+            
+    fields_only = [x[1] for x in big5_data]
+
+    counted_fields = pd.Series(fields_only).value_counts().reset_index().values.tolist()
+
+    fields = [x[0] for x in counted_fields]
+    counts = [x[1] for x in counted_fields]
+
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle('Journals by field (Big5 Providers)')
+    plt.barh(fields, counts, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+
+
+def journals_by_field_other_providers():
+    """Counting occurences of downloads in each field from Journals Per Package.csv
+    from the big5 publishers. Big 5 are: Elsevier, Wiley, Springer, Sage, Taylor & Francis"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    providers_list = data.Provider.tolist()
+    fields_list = data.Field.tolist()
+    
+    zipped = list(zip(providers_list, fields_list))
+    
+    big5 = ['Elsevier', 'Wiley', 'Springer', 'Taylor & Francis', 'Sage']
+    not_big5_data = []
+    
+    for i in zipped:
+        if i[0] not in big5:
+            not_big5_data.append(i)
+            
+    fields_only = [x[1] for x in not_big5_data]
+    
+    counted_fields = pd.Series(fields_only).value_counts().reset_index().values.tolist()
+    
+    fields = [x[0] for x in counted_fields]
+    counts = [x[1] for x in counted_fields]
+
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle('Journals by Field (Not Big5 Providers)')
+    plt.barh(fields, counts, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+    
+    
+def references_by_field_by_provider(provider_name):
+    """Charts references by field for chosen provider. User inputs provider name and dynamically generates chart for that provider.
+    References are defined as: 'Number of references made by researchers of your institution to an article from a given journal.' """
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+    
+    for i in fields_data:
+        fields.append(i[0])
+        
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer
+    
+    sums_by_field = subset_by_provider.groupby(['Field'])['References'].sum().tolist()     #sum of downloads per field
+    
+    sums_by_field = list(reversed(sums_by_field))
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'References by UVA authors by field for Provider: {provider_name}')
+    plt.barh(fields, sums_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show() 
+    
+
+def publications_by_field_by_provider(provider_name):
+    """Charts publications by field for chosen provider. User inputs provider name and dynamically generates chart for that provider.
+    Papers are defined as: 'Number of documents published in peer-reviewed journals indexed in Scopus and for which at least one author was affiliated to your institution.'"""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    subset_by_provider = data.loc[data['Provider'] == provider_name]
+    
+    fields_data = subset_by_provider.groupby(['Field'], as_index=False).sum().values.tolist()
+    fields = []
+ 
+    for i in fields_data:
+        fields.append(i[0])
+   
+    fields = list(reversed(fields))             #to add to bar graph in reverse alphabetical order so it looks nicer
+    
+    sums_by_field = subset_by_provider.groupby(['Field'])['Papers'].sum().tolist()     #sum of downloads per field
+    
+    sums_by_field = list(reversed(sums_by_field))
+    
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Publications by UVA authors by field for Provider: {provider_name}')
+    plt.barh(fields, sums_by_field, height=.8, color='green')
+    plt.grid()
+    plt.show()
+
+
+def big5_percent_jr5_of_jr1():
+    """A measurement of currency. Compares JR5 downloads to JR1 downloads for each of the big 5 providers.
+    JR5 downloads are 2017 articles downloaded in 2017.
+    JR1 downloads are all years articles downloaded in 2017.
+    We want to see what % of current articles people are downloading."""
+    
+    data = pd.read_csv('JournalsPerProvider.csv', skiprows=8)
+    
+    big5 = ['Elsevier', 'Taylor & Francis', 'Sage', 'Springer', 'Wiley']    
+#    big5 = ['AIP', 'American Chemical Society']
+    
+    percent_jr5_of_jr1 = []
+    
+    for provider_name in big5:
+        
+        subset_by_provider = data.loc[data['Provider'] == provider_name]
+
+        journals_data = subset_by_provider.groupby('Journal', as_index=False).sum().values.tolist()
+        
+        for i in journals_data:
+            if i[0] == provider_name:
+                jr1_total = i[2]
+                jr5_total = i[3]
+                ratio = jr5_total/jr1_total
+                percent_jr5_of_jr1.append(ratio)
+                
+    mpl.rcParams['ytick.major.width'] = 1
+    mpl.rcParams['xtick.major.width'] = 1
+    plt.figure(num=None, figsize=(8,8))
+    plt.suptitle(f'Percent JR5 downloads of JR1 downloads \n (Measures currency of article use)')
+    plot = plt.barh(big5, percent_jr5_of_jr1, height=.8, color='green')    
+        
+    for i in plot:
+        score = i.get_width()
+        
+        plt.text(i.get_width() - .0175,           #sets x axis position of labels
+                 i.get_y() + .35,
+                 '{:.2%}'.format(score),
+                 ha='center',
+                 va='center') 
+
+
+
+
 

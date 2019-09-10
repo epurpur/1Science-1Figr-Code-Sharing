@@ -43,9 +43,10 @@ places.
 *Lastly, keep in mind your 'JournalsPerProvider.csv' file should be saved in the working directory or same directory as the 
 code. Otherwise you'll have to change the file paths at the beginning of each function to read to the new working directory. 
 
-9- Once in the 1FigrFunctions.py file, at the top of the code in line 19, find the "your_institution" variable and change it
-to your institution's preferred name. This variable is included in the chart names. An alternative would be to change the
-plot titles to something you like more. You'll find this in the plt.suptitle() line of each function.
+9- Now look for in the repository for 1FigrFunctions.py and open this code in any text editor. Once open, at the top of the 
+script in line 19, find the "your_institution" variable and change it to your institution's preferred name. This variable is 
+included in the chart names. An alternative would be to change the plot titles to something you like more. You'll find this 
+in the plt.suptitle() line of each function.
 
 Now that you've formatted the data correctly, you should be able to "plug and play" all existing functions. Documentation of 
 function will be improving with time. The function names are an attempt to be descriptive. But if you are unclear, hopefully 

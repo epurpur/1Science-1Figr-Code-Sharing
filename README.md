@@ -13,7 +13,7 @@ your 'JournalsPerProvider.csv' file should be saved in the working directory or 
 2- Notice in the 'JournalsPerProvider' CSV document that the column headers begin on row 8. Keep it this way. The code 
 skips to the 8th row, and then begins parsing the data.
 
-*Probably the easiest way to do steps 3-8 is in Microsoft Excel. 
+*Probably the easiest way to do steps 3-9 is in Microsoft Excel. 
 
 3- Open the CSV document (JournalsPerProvider.csv) in excel and 
 format the data in the following columns as 'general' data type with no decimal places. Do this by selected all the data in 

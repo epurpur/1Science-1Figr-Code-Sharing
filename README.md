@@ -41,8 +41,9 @@ no decimal places.
 'total_2008', 'total_2009', 'total_2010', and so on. Change data in these columns to 'general' data type with no decimal 
 places. 
 
+9- Remember to save the 'JournalsPerProvider.csv' file. Be sure to keep encoding the same (UTF-8).
 
-9- Now look for in the repository for 1FigrFunctions.py and open this code in your editor of choice. Once open, at the top of the 
+10- Now look for in the repository for 1FigrFunctions.py and open this code in your editor of choice. Once open, at the top of the 
 script in line 19, find the "your_institution" variable and change it to your institution's preferred name. This variable is 
 included in the chart names. An alternative would be to change the plot titles to something you like more. You'll find this 
 in the plt.suptitle() line of each function.
